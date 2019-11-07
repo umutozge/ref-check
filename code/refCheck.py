@@ -11,7 +11,7 @@ from optparse import OptionParser
 
 def report_bib_list():
 
-	biblist = open('biblist.txt.asc','w', encoding='utf-8')
+	biblist = open('report-biblist.txt.asc','w', encoding='utf-8')
 
 	for m in MATCHES:
 		#m = re.sub('\(|\)', '', m)
@@ -34,11 +34,11 @@ def check_bib_in_text(author, year):
 	return pattern.findall(TEXT)
 
 def check_text_in_bib(authoryearlist):
-	instream = open('biblist.txt.asc', 'r', encoding='utf-8')
+	instream = open('report-biblist.txt.asc', 'r', encoding='utf-8')
 	biblist = instream.readlines()
 	instream.close()
 
-	outstream = open('text2bib-report.txt.asc', 'w', encoding='utf-8')
+	outstream = open('report-text2bib.txt.asc', 'w', encoding='utf-8')
 
 	for ay in authoryearlist:
 		author, year =  ay
@@ -54,10 +54,10 @@ def get_intext_citations():
 	citation_pattern = re.compile('([a-z]+ |\(|; ?|. |	|\n)(([#A-ZÖÇÜŞİ][^. ]+,? |and |& )+\(?\d\d\d\d\)?)')
 	intext_citations = [x[1] for x in citation_pattern.findall(TEXT)]
 	
-	return intext_citations
+	return uniq(intext_citations)
 
 def report_text_to_bib():
-	outstream = open('intext-citations.txt.asc', 'w', encoding='utf-8')
+	outstream = open('report-intext-citations.txt.asc', 'w', encoding='utf-8')
 
 	intext_citations = get_intext_citations()
 
@@ -66,9 +66,9 @@ def report_text_to_bib():
 	
 	outstream.close()
 
-	subprocess.run(['vim intext-citations.txt.asc'], shell=True)
+	subprocess.run([EDITOR + ' report-intext-citations.txt.asc'], shell=True)
 
-	instream = open('intext-citations.txt.asc', 'r', encoding='utf-8')
+	instream = open('report-intext-citations.txt.asc', 'r', encoding='utf-8')
 
 	author_year_list = []
 	lines = instream.readlines()
@@ -88,7 +88,7 @@ def report_text_to_bib():
 
 
 def report_bib_to_text():
-	outstream = open('bib2text-report.txt.asc', 'w', encoding = 'utf-8')
+	outstream = open('report-bib2text.txt.asc', 'w', encoding = 'utf-8')
 
 	for a, y in get_author_year_pairs(MATCHES):
 		outstream.write(a + ' ' + y + ':\n')
@@ -108,10 +108,10 @@ def uniq(lst):
 	return store
 
 def exit():
-	subprocess.run(['ascii2tr.sh', 'intext-citations.txt.asc']) 
-	subprocess.run(['ascii2tr.sh', 'bib2text-report.txt.asc'])
-	subprocess.run(['ascii2tr.sh', 'biblist.txt.asc'])
-	subprocess.run(['ascii2tr.sh', 'text2bib-report.txt.asc'])
+	subprocess.run(['ascii2tr.sh', 'report-intext-citations.txt.asc']) 
+	subprocess.run(['ascii2tr.sh', 'report-bib2text.txt.asc'])
+	subprocess.run(['ascii2tr.sh', 'report-biblist.txt.asc'])
+	subprocess.run(['ascii2tr.sh', 'report-text2bib.txt.asc'])
 	subprocess.Popen('rm *.asc', shell=True)
 	LOGFILE.close()
 
@@ -119,12 +119,16 @@ def exit():
 if __name__ == '__main__':
 
 	clparser = OptionParser()
+	clparser.usage="%prog [options] input-file"
+	clparser.add_option('-e', dest='editor', default='vim', help='editor to perform intermediary corrections.')
+	clparser.add_option('-b', dest='bibname', default='references', help='title of the end-text references section -- case insensitive')
 	opts, args = clparser.parse_args()
 
 	subprocess.check_output(['tr2ascii.sh', args[0]])
 
 	LOGFILE = open('log.txt', 'w', encoding='utf-8')
-
+	EDITOR = opts.editor
+	BIBNAME = opts.bibname
 
 	f = open(args[0]+'.asc', 'r', encoding='utf-8')
 	TEXT = f.read()
@@ -132,7 +136,7 @@ if __name__ == '__main__':
 
 
 	bib_pattern = re.compile('\n[^ \n]+, \D*[^.]+. +\d\d\d\d.')
-	MATCHES = bib_pattern.findall(TEXT[TEXT.lower().find('references'):])
+	MATCHES = bib_pattern.findall(TEXT[TEXT.lower().find(BIBNAME):])
 	
 	report_bib_list()
 	report_bib_to_text()
